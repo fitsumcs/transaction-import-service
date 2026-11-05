@@ -400,7 +400,7 @@ Docker must be running for integration tests.
 
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
-| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | PR / push to `main` | Format → build → test |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Pull requests to `main` | Format → build → test |
 | [`.github/workflows/cd.yml`](.github/workflows/cd.yml) | Push to `main` / tags / manual | Build api/worker/migrator → push GHCR → SSH → `compose pull && up -d` |
 
 CD secrets (GitHub Environment **`production`**):
