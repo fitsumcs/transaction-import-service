@@ -7,8 +7,10 @@ and **Redis Streams**. Multipart NDJSON uploads stream to storage; a separate Wo
 normalizes, fingerprints, risk-scores, and persists batches under database leases. Progress, summary,
 and cursor-paginated rejections are exposed over HTTP.
 
-Repository: use the Git remote URL for this project. Deploy the Compose stack (or GHCR images via CD) on
-your server and point evaluators at that base URL + `/swagger`.
+Repository: use the Git remote URL for this project.
+
+**Live demo:** `https://YOUR_PUBLIC_HOST` · Swagger: `https://YOUR_PUBLIC_HOST/swagger`  
+(How to provision: [`DEPLOY.md`](DEPLOY.md).)
 
 **For evaluators:** follow [`REVIEWER_TEST_GUIDE.md`](REVIEWER_TEST_GUIDE.md) (Swagger steps, sample NDJSON,
 expected statuses, cancel/idempotency/error checks).
@@ -52,7 +54,7 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`adr/`](adr/).
 - No authentication (assignment optional; auth-ready header seam).
 - Resumable **upload** HTTP not exposed.
 - Data-retention policy not implemented.
-- Public URL depends on your deployment (not baked into the repo).
+- Public URL is set after deploy (`https://YOUR_PUBLIC_HOST` until `./deploy/scripts/update-readme-url.sh` is run).
 
 ## Benchmark summary
 

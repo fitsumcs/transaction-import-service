@@ -1,0 +1,63 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - nginx
+  - certbot
+  - python3-certbot-nginx
+
+write_files:
+  - path: /etc/nginx/sites-available/transaction-import
+    owner: root:root
+    permissions: "0644"
+    content: |
+      server {
+          listen 80 default_server;
+          listen [::]:80 default_server;
+          server_name ${domain_name != "" ? domain_name : "_"};
+
+          client_max_body_size 512m;
+
+          location / {
+              proxy_pass http://127.0.0.1:8080;
+              proxy_http_version 1.1;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_read_timeout 300s;
+              proxy_send_timeout 300s;
+          }
+      }
+
+  - path: /usr/local/bin/bootstrap-transaction-import.sh
+    owner: root:root
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+      chmod a+r /etc/apt/keyrings/docker.asc
+      . /etc/os-release
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $${VERSION_CODENAME} stable" > /etc/apt/sources.list.d/docker.list
+      apt-get update
+      apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      usermod -aG docker ubuntu
+      systemctl enable --now docker
+      mkdir -p ${app_dir}
+      chown -R ubuntu:ubuntu ${app_dir}
+      ln -sf /etc/nginx/sites-available/transaction-import /etc/nginx/sites-enabled/transaction-import
+      rm -f /etc/nginx/sites-enabled/default
+      nginx -t
+      systemctl enable --now nginx
+      systemctl reload nginx
+
+runcmd:
+  - [/usr/local/bin/bootstrap-transaction-import.sh]
+
+final_message: "transaction-import bootstrap complete. App dir: ${app_dir}"

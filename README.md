@@ -10,6 +10,17 @@ reconciliation results over HTTP.
 | **Assignment** | [`docs/Senior_Software_Engineer_Take_Home_Assignment.pdf`](docs/Senior_Software_Engineer_Take_Home_Assignment.pdf) |
 | **Architecture** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [ADRs](docs/adr/) |
 | **Reviewer guide** | [`docs/REVIEWER_TEST_GUIDE.md`](docs/REVIEWER_TEST_GUIDE.md) — step-by-step checks via Swagger on a deployed URL |
+| **Deploy** | [`docs/DEPLOY.md`](docs/DEPLOY.md) — AWS Terraform + DuckDNS + Nginx |
+
+### Live demo (reviewers)
+
+| | |
+| --- | --- |
+| **Base URL** | `https://YOUR_PUBLIC_HOST` |
+| **Swagger** | `https://YOUR_PUBLIC_HOST/swagger` |
+| **Ready** | `https://YOUR_PUBLIC_HOST/health/ready` |
+
+After deploy, replace the placeholder: `./deploy/scripts/update-readme-url.sh https://your-subdomain.duckdns.org`
 
 ---
 
@@ -24,10 +35,11 @@ reconciliation results over HTTP.
 7. [Configuration](#configuration)
 8. [Tests](#tests)
 9. [CI / CD](#ci--cd)
-10. [Benchmarks](#benchmarks)
-11. [Runtime monitoring](#runtime-monitoring)
-12. [Repository layout](#repository-layout)
-13. [Known limitations](#known-limitations)
+10. [Deploy (AWS)](#deploy-aws) · [docs/DEPLOY.md](docs/DEPLOY.md)
+11. [Benchmarks](#benchmarks)
+12. [Runtime monitoring](#runtime-monitoring)
+13. [Repository layout](#repository-layout)
+14. [Known limitations](#known-limitations)
 14. [Submission](#submission)
 
 ---
@@ -466,6 +478,24 @@ CD exports `IMAGE_API` / `IMAGE_WORKER` / `IMAGE_MIGRATOR` and runs `docker comp
 
 ---
 
+## Deploy (AWS)
+
+End-to-end public demo (EC2 Free Tier–oriented, Docker, Nginx, DuckDNS, TLS):
+
+→ **[`docs/DEPLOY.md`](docs/DEPLOY.md)** · Terraform under [`deploy/terraform`](deploy/terraform)
+
+```bash
+cd deploy/terraform
+cp terraform.tfvars.example terraform.tfvars   # fill keys + DuckDNS
+terraform init && terraform apply
+./deploy/scripts/sync-compose-to-server.sh ubuntu@$(terraform -chdir=deploy/terraform output -raw public_ip) ~/.ssh/id_ed25519
+./deploy/scripts/update-readme-url.sh "$(terraform -chdir=deploy/terraform output -raw public_base_url)"
+```
+
+Public URL for reviewers: `https://YOUR_PUBLIC_HOST` (update after apply).
+
+---
+
 ## Repository layout
 
 ```text
@@ -487,10 +517,14 @@ docs/
   ARCHITECTURE.md
   SUBMISSION.md
   BENCHMARK.md
+  DEPLOY.md                           AWS / DuckDNS / Nginx guide
   REVIEWER_TEST_GUIDE.md              evaluator checklist (Swagger)
   fixtures/reviewer-sample.ndjson
   adr/                                0001–0004
   Senior_Software_Engineer_Take_Home_Assignment.pdf
+deploy/
+  terraform/                          EC2 + EIP + SG + cloud-init
+  scripts/                            sync compose + update README URL
 ```
 
 ---
