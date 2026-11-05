@@ -1,30 +1,16 @@
 # Transaction Import Service
 
-A backend service that imports large NDJSON transaction files, processes them asynchronously
-(validation, normalization, duplicate detection, fingerprinting, CPU-bound risk scoring) and
-exposes import progress and reconciliation results over HTTP.
+A production-oriented backend that imports large NDJSON transaction files, processes them
+asynchronously (validate → normalize → fingerprint → risk-score → persist), and exposes progress
+and reconciliation results over HTTP.
 
-Built with **.NET 10**, **ASP.NET Core** and **PostgreSQL 17**. The assignment brief is in
-[`docs/Senior_Software_Engineer_Take_Home_Assignment.pdf`](docs/Senior_Software_Engineer_Take_Home_Assignment.pdf).
+**Stack:** .NET 10 · ASP.NET Core · PostgreSQL 17 · Redis Streams · Docker Compose
 
-## Status
+Assignment brief: [`docs/Senior_Software_Engineer_Take_Home_Assignment.pdf`](docs/Senior_Software_Engineer_Take_Home_Assignment.pdf)
 
-| Area | State |
-| --- | --- |
-| Solution layout, dependency boundaries, architecture tests | Done |
-| Domain: import lifecycle state machine, progress invariants, risk levels | Done |
-| Hosting: composition roots, `/health/live`, `/health/ready`, error envelope, request ids, Swagger | Done |
-| Docker Compose (api, worker, PostgreSQL) | Done |
-| Database schema and migrations | Next |
-| Import upload (`POST /v1/imports`) with idempotency | Planned |
-| Streaming processing pipeline in the worker | Planned |
-| Status, cancel, summary, rejections endpoints | Planned |
-| Metrics, retry policy, graceful shutdown of in-flight batches | Planned |
-| Data generator, load test, `BENCHMARK.md` | Planned |
+---
 
-## Quick start
-
-Prerequisites: Docker with Compose v2.
+## Quick start (recommended)
 
 ```bash
 docker compose up --build
@@ -32,68 +18,192 @@ docker compose up --build
 
 | Service | URL |
 | --- | --- |
-| API | <http://localhost:8080> |
-| Swagger UI | <http://localhost:8080/swagger> |
-| OpenAPI document | <http://localhost:8080/openapi/v1.json> |
-| API readiness | <http://localhost:8080/health/ready> |
-| Worker readiness | <http://localhost:8081/health/ready> |
+| API | http://localhost:8080 |
+| Swagger UI | http://localhost:8080/swagger |
+| OpenAPI | http://localhost:8080/openapi/v1.json |
+| API readiness | http://localhost:8080/health/ready |
+| Worker readiness | http://localhost:8081/health/ready |
+| Prometheus metrics | http://localhost:8080/metrics |
 
-Default credentials are development-only. To override them, copy `.env.example` to `.env`.
+Copy `.env.example` to `.env` to override passwords and ports. Defaults are for local demos only.
 
-## Running without Docker
+Stop with `docker compose down`. Add `-v` to wipe the database volume.
 
-Prerequisites: .NET SDK 10.0.301+ (pinned in `global.json`) and a PostgreSQL instance.
+---
+
+## Operate the app
+
+### 1. Generate a test file
 
 ```bash
-docker compose up -d postgres            # or point Postgres__ConnectionString at your own server
-dotnet run --project src/TransactionImport.Api       # http://localhost:5281
-dotnet run --project src/TransactionImport.Worker    # http://localhost:5282
+dotnet run --project tools/TransactionImport.DataGenerator -- \
+  --records=10000 --output=data/sample.ndjson --duplicates=0.02 --invalid=0.01
 ```
 
-`appsettings.Development.json` points both hosts at `localhost:5432`.
-
-## Tests
+For a larger file (benchmark-sized):
 
 ```bash
+dotnet run --project tools/TransactionImport.DataGenerator -- \
+  --records=500000 --output=data/large.ndjson
+```
+
+### 2. Upload an import
+
+```bash
+curl -sS -X POST http://localhost:8080/v1/imports \
+  -H "Idempotency-Key: demo-$(uuidgen)" \
+  -H "X-Provider-Id: provider-demo" \
+  -F "file=@data/sample.ndjson;type=application/x-ndjson"
+```
+
+Response (202 Accepted):
+
+```json
+{ "id": "...", "status": "pending", "createdAt": "..." }
+```
+
+Required headers:
+
+| Header | Purpose |
+| --- | --- |
+| `Idempotency-Key` | 1–128 safe characters. Replays return the same import; concurrent uploads with the same key do not create duplicates. |
+| `X-Provider-Id` | Provider scope for duplicate detection (see [ADR 0003](docs/adr/0003-record-outcome-semantics.md)). |
+
+### 3. Poll status
+
+```bash
+curl -sS http://localhost:8080/v1/imports/<id>
+```
+
+Statuses: `pending` → `processing` → `completed` | `failed` | `cancelling` → `cancelled`.
+
+### 4. Summary and rejections
+
+```bash
+curl -sS http://localhost:8080/v1/imports/<id>/summary
+curl -sS "http://localhost:8080/v1/imports/<id>/rejections?limit=50"
+# next page:
+curl -sS "http://localhost:8080/v1/imports/<id>/rejections?limit=50&cursor=<nextCursor>"
+```
+
+### 5. Cancel / retry
+
+```bash
+curl -sS -X POST http://localhost:8080/v1/imports/<id>/cancel
+curl -sS -X POST http://localhost:8080/v1/imports/<id>/retry   # failed imports only
+```
+
+Cancellation stops at the next batch boundary; committed batches are kept. Retry resumes from the last checkpoint.
+
+### 6. Health and metrics
+
+```bash
+curl -sS http://localhost:8080/health/live    # process alive (no dependency checks)
+curl -sS http://localhost:8080/health/ready   # Postgres + Redis + not shutting down
+curl -sS http://localhost:8080/metrics        # Prometheus text
+```
+
+---
+
+## Architecture at a glance
+
+```text
+Client ──multipart──► API ──stream──► File storage
+                        │
+                        └──trx──► Postgres (import + idempotency + outbox)
+                                        │
+                              Outbox relay ──XADD──► Redis Streams
+                                                        │
+                                              Worker (XREADGROUP)
+                                                        │
+                              claim lease ──► parse/score/commit batches ──► Postgres
+```
+
+- **Why Redis?** Notifications and DLQ; see [ADR 0004](docs/adr/0004-redis-streams-outbox.md).
+- **Why an outbox?** Creating the import and enqueueing are one database transaction — no dual-write hole.
+- **Why a DB lease?** Ownership survives Redis redelivery; batch commits are fenced by `lease_token`.
+
+Docs: [ARCHITECTURE.md](docs/ARCHITECTURE.md) · [ADRs](docs/adr/)
+
+---
+
+## Local development (without rebuilding images)
+
+Prerequisites: .NET SDK 10.0.301+ (see `global.json`), Docker.
+
+```bash
+docker compose up -d postgres redis
+dotnet run --project src/TransactionImport.Migrator
+dotnet run --project src/TransactionImport.Api       # :5281
+dotnet run --project src/TransactionImport.Worker    # :5282
+```
+
+`appsettings.Development.json` points at `localhost:5432` / `localhost:6379` and `./data/uploads`.
+
+### Tests
+
+```bash
+dotnet format --verify-no-changes
 dotnet test
 ```
 
-- `tests/TransactionImport.UnitTests` has no external dependencies.
-- `tests/TransactionImport.IntegrationTests` starts a disposable PostgreSQL container through
-  [Testcontainers](https://dotnet.testcontainers.org/), so Docker must be running. Tests do not depend on
-  execution order or a manually prepared database.
+Integration tests start PostgreSQL and Redis via Testcontainers (Docker required).
 
-The test projects use xUnit v3 on Microsoft.Testing.Platform (enabled in `global.json`).
+### Configuration
 
-## Configuration
-
-| Setting | Environment variable | Description |
+| Setting | Env var | Notes |
 | --- | --- | --- |
-| `Postgres:ConnectionString` | `Postgres__ConnectionString` | Npgsql connection string. Required; startup fails fast when missing. |
-| `ASPNETCORE_HTTP_PORTS` | same | Listening port inside containers (default `8080`). |
+| `Postgres:ConnectionString` | `Postgres__ConnectionString` | Required |
+| `Redis:ConnectionString` | `Redis__ConnectionString` | Required |
+| `FileStorage:Provider` | `FileStorage__Provider` | `local` or `s3` |
+| `FileStorage:LocalRoot` | `FileStorage__LocalRoot` | Default `/data/uploads` |
+| `Imports:MaxFileBytes` | `Imports__MaxFileBytes` | Default 256 MiB |
+| `RiskScoring:WorkFactor` | `RiskScoring__WorkFactor` | PBKDF2 iterations (demo default 50 in Compose) |
+| `Processing:BatchSize` | `Processing__BatchSize` | Default 1000 |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | same | Enables OTLP trace export when set |
+
+---
+
+## CI / CD
+
+- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): format check → build → test on every PR/push to `main`.
+- **CD** ([`.github/workflows/cd.yml`](.github/workflows/cd.yml)): build api/worker/migrator images, push to GHCR, SSH to the server, `docker compose pull && up -d`.
+
+CD secrets (GitHub → Environment `production`):
+
+| Secret | Purpose |
+| --- | --- |
+| `DEPLOY_HOST` | Server hostname |
+| `DEPLOY_USER` | SSH user |
+| `DEPLOY_SSH_KEY` | Private key |
+| `DEPLOY_PORT` | SSH port (default 22 if unset in the action input — set explicitly) |
+| `DEPLOY_COMPOSE_DIR` | Absolute path to the compose directory on the server |
+
+On the server, keep `docker-compose.yml` + `docker-compose.prod.yml` and a `.env` with image names / DB password. The CD job exports `IMAGE_API`, `IMAGE_WORKER`, `IMAGE_MIGRATOR`.
+
+---
 
 ## Repository layout
 
 ```text
 src/
-  TransactionImport.Domain/          Entities, value objects, invariants. No dependencies.
-  TransactionImport.Application/     Use cases and ports (interfaces). Depends on Domain only.
-  TransactionImport.Infrastructure/  PostgreSQL, file storage, queue, health checks, DI registration.
-  TransactionImport.Api/             HTTP host and composition root for request handling.
-  TransactionImport.Worker/          Processing host and composition root for background work.
+  TransactionImport.Domain/
+  TransactionImport.Application/     use cases + ports
+  TransactionImport.Infrastructure/  Postgres, Redis, storage, scoring, OTel
+  TransactionImport.Api/
+  TransactionImport.Worker/
+  TransactionImport.Migrator/
 tests/
-  TransactionImport.UnitTests/
-  TransactionImport.IntegrationTests/
-tools/
-  TransactionImport.DataGenerator/   NDJSON test data generator.
-docs/
-  ARCHITECTURE.md
-  adr/                               Architecture Decision Records.
+tools/TransactionImport.DataGenerator/
+docs/  ARCHITECTURE.md, adr/, assignment PDF
 ```
 
-## Documentation
+---
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [ADR 0001: Technology stack](docs/adr/0001-technology-stack.md)
-- [ADR 0002: Job execution model](docs/adr/0002-job-execution-model.md)
-- [ADR 0003: Record outcome semantics](docs/adr/0003-record-outcome-semantics.md)
+## Known limitations / follow-ups
+
+- Resumable (chunked) uploads: storage keys and `ConcatenatedReadStream` are ready; the HTTP protocol surface is not exposed yet.
+- No auth yet; designed so `X-Provider-Id` can move to the authenticated principal without restructuring.
+- Outbox / rejected-record retention job not implemented.
+- Benchmark report (`BENCHMARK.md`) should be filled after a timed 500k run on target hardware.
+- `RiskScoring__WorkFactor` defaults to 50 in Compose for snappy demos; use ≥1000 for production-like CPU load.
