@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TransactionImport.Api/TransactionImport.Api.csproj" />
+    <Project Path="src/TransactionImport.Application/TransactionImport.Application.csproj" />
+    <Project Path="src/TransactionImport.Domain/TransactionImport.Domain.csproj" />
+    <Project Path="src/TransactionImport.Infrastructure/TransactionImport.Infrastructure.csproj" />
+    <Project Path="src/TransactionImport.Worker/TransactionImport.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TransactionImport.IntegrationTests/TransactionImport.IntegrationTests.csproj" />
+    <Project Path="tests/TransactionImport.UnitTests/TransactionImport.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/TransactionImport.DataGenerator/TransactionImport.DataGenerator.csproj" />
+  </Folder>
+</Solution>

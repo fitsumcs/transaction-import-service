@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TransactionImport.Domain\TransactionImport.Domain.csproj" />
+    <ProjectReference Include="..\..\src\TransactionImport.Application\TransactionImport.Application.csproj" />
+  </ItemGroup>
+
+</Project>
