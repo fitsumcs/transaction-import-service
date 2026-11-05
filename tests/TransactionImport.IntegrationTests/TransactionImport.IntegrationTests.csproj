@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\TransactionImport.Api\TransactionImport.Api.csproj" />
+    <ProjectReference Include="..\..\src\TransactionImport.Worker\TransactionImport.Worker.csproj" />
     <ProjectReference Include="..\..\src\TransactionImport.Infrastructure\TransactionImport.Infrastructure.csproj" />
   </ItemGroup>
 

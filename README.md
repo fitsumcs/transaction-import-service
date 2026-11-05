@@ -23,8 +23,11 @@ reconciliation results over HTTP.
 7. [Configuration](#configuration)
 8. [Tests](#tests)
 9. [CI / CD](#ci--cd)
-10. [Repository layout](#repository-layout)
-11. [Known limitations](#known-limitations)
+10. [Benchmarks](#benchmarks)
+11. [Runtime monitoring](#runtime-monitoring)
+12. [Repository layout](#repository-layout)
+13. [Known limitations](#known-limitations)
+14. [Submission](#submission)
 
 ---
 
@@ -389,10 +392,45 @@ dotnet format --verify-no-changes
 dotnet test
 ```
 
-- **Unit tests** — validation, normalization, fingerprint, risk model, status machine, upload inspection, create-import with fakes, FsCheck properties.
-- **Integration tests** — real Postgres + Redis via Testcontainers: migrations, constraints, health, create/idempotency/concurrency/cancel.
+- **Unit tests** — validation, normalization, fingerprint, risk model, status machine, upload inspection, create-import with fakes, retry policy, FsCheck properties.
+- **Integration tests** — Testcontainers Postgres + Redis: migrations, constraints, health, create/idempotency/concurrency/cancel.
+- **End-to-end** — API + Worker together: process to `completed`, summary, rejection cursor pagination, retry, stale-lease recovery.
 
-Docker must be running for integration tests.
+Docker must be running for integration / e2e tests.
+
+---
+
+## Benchmarks
+
+With the stack up (`docker compose up --build`):
+
+```bash
+chmod +x scripts/benchmark.sh
+RECORDS=50000 ./scripts/benchmark.sh          # quick local run
+RECORDS=500000 ./scripts/benchmark.sh         # assignment-scale run
+```
+
+Results land in `benchmarks/results/`. Interpretation and a measured run: [`docs/BENCHMARK.md`](docs/BENCHMARK.md).
+
+---
+
+## Runtime monitoring
+
+| What to watch | How | Problem shape |
+| --- | --- | --- |
+| HTTP latency / rate | `/metrics` ASP.NET counters | API path saturated or dependency slow |
+| Import / batch stage duration | `import_duration_seconds`, `batch_stage_duration_seconds` | Score stage high + process CPU high → CPU bound; high duration + low CPU → DB/IO |
+| Records / failures / retries | `records_*_total`, `processing_failures_total`, `operation_retries_total` | Rising retries → transient infra |
+| Runtime CPU / memory | OTel runtime instrumentation on `/metrics` | Memory climb without progress → leak or unbounded queue (should not happen; pools are bounded) |
+| Readiness | `/health/ready` | Unhealthy while `/health/live` OK → dependency outage; do not restart forever on DB blips |
+
+API stays responsive during imports because scoring runs only in the Worker with bounded pools (`Processing:MaxConcurrentImports`, `RiskScoring:MaxQueuedRequests`). When at capacity, jobs remain `pending` in Postgres/Redis rather than spawning unbounded tasks.
+
+---
+
+## Submission
+
+Evaluator-oriented write-up: [`docs/SUBMISSION.md`](docs/SUBMISSION.md).
 
 ---
 
@@ -432,8 +470,12 @@ tests/
   TransactionImport.IntegrationTests/
 tools/
   TransactionImport.DataGenerator/
+scripts/
+  benchmark.sh
 docs/
   ARCHITECTURE.md
+  SUBMISSION.md
+  BENCHMARK.md
   adr/                                0001–0004
   Senior_Software_Engineer_Take_Home_Assignment.pdf
 ```
@@ -445,5 +487,5 @@ docs/
 - Resumable (chunked) upload **HTTP** API is not exposed yet (storage/concat reader support exists).
 - No authentication yet; designed so `X-Provider-Id` can move to the authenticated principal without a redesign.
 - Outbox / rejected-record retention job not implemented.
-- Fill `BENCHMARK.md` after a timed 500k run on target hardware.
 - Compose sets `RiskScoring__WorkFactor=50` for snappy demos; raise for production-like load.
+- Public deployment URL is provided by your environment (see CD / Compose on your server).
