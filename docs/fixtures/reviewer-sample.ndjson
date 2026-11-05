@@ -1,0 +1,5 @@
+{"transactionId":"rev-10001","accountId":"acc-201","merchantId":"merchant-18","amount":145.75,"currency":"USD","timestamp":"2026-07-20T10:25:00.000Z","description":"Subscription payment"}
+{"transactionId":"rev-10001","accountId":"acc-201","merchantId":"merchant-18","amount":145.75,"currency":"USD","timestamp":"2026-07-20T10:25:00.000Z","description":"Subscription payment"}
+{"transactionId":"rev-10002","accountId":"acc-202","merchantId":"merchant-9","amount":20,"currency":"EUR","timestamp":"2026-07-20T11:00:00.000Z"}
+{"transactionId":"bad","accountId":"a","merchantId":"m","amount":-1,"currency":"USD","timestamp":"2026-07-20T10:25:00.000Z"}
+{not-json

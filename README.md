@@ -9,6 +9,7 @@ reconciliation results over HTTP.
 | **Stack** | .NET 10 · ASP.NET Core · PostgreSQL 17 · Redis Streams · Docker Compose |
 | **Assignment** | [`docs/Senior_Software_Engineer_Take_Home_Assignment.pdf`](docs/Senior_Software_Engineer_Take_Home_Assignment.pdf) |
 | **Architecture** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [ADRs](docs/adr/) |
+| **Reviewer guide** | [`docs/REVIEWER_TEST_GUIDE.md`](docs/REVIEWER_TEST_GUIDE.md) — step-by-step checks via Swagger on a deployed URL |
 
 ---
 
@@ -17,7 +18,7 @@ reconciliation results over HTTP.
 1. [Features](#features)
 2. [How to run](#how-to-run)
 3. [API endpoints](#api-endpoints)
-4. [Typical workflow](#typical-workflow)
+4. [Typical workflow](#typical-workflow) · [Reviewer test guide](docs/REVIEWER_TEST_GUIDE.md)
 5. [Input format](#input-format)
 6. [Local development](#local-development)
 7. [Configuration](#configuration)
@@ -476,6 +477,8 @@ docs/
   ARCHITECTURE.md
   SUBMISSION.md
   BENCHMARK.md
+  REVIEWER_TEST_GUIDE.md              evaluator checklist (Swagger)
+  fixtures/reviewer-sample.ndjson
   adr/                                0001–0004
   Senior_Software_Engineer_Take_Home_Assignment.pdf
 ```

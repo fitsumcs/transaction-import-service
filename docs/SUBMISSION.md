@@ -10,6 +10,9 @@ and cursor-paginated rejections are exposed over HTTP.
 Repository: use the Git remote URL for this project. Deploy the Compose stack (or GHCR images via CD) on
 your server and point evaluators at that base URL + `/swagger`.
 
+**For evaluators:** follow [`REVIEWER_TEST_GUIDE.md`](REVIEWER_TEST_GUIDE.md) (Swagger steps, sample NDJSON,
+expected statuses, cancel/idempotency/error checks).
+
 ## Architecture overview
 
 - **API** — upload, status, cancel, retry, summary, rejections, health, metrics, OpenAPI.

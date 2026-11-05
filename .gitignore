@@ -488,5 +488,6 @@ $RECYCLE.BIN/
 /storage/
 *.ndjson
 !tests/**/fixtures/*.ndjson
+!docs/fixtures/*.ndjson
 benchmarks/results/
 .DS_Store
