@@ -28,13 +28,18 @@ public static class ImportStatusTransitions
             [ImportStatus.Cancelling] = Set(ImportStatus.Cancelled, ImportStatus.Failed),
 
             [ImportStatus.Completed] = Set(),
-            [ImportStatus.Failed] = Set(),
+
+            // Failed -> Pending: explicit operator retry only (POST /v1/imports/{id}/retry).
+            [ImportStatus.Failed] = Set(ImportStatus.Pending),
             [ImportStatus.Cancelled] = Set(),
         }.ToFrozenDictionary();
 
+    private static readonly FrozenSet<ImportStatus> Terminal = Set(ImportStatus.Completed, ImportStatus.Failed, ImportStatus.Cancelled);
+
     public static bool CanTransition(ImportStatus from, ImportStatus to) => Allowed[from].Contains(to);
 
-    public static bool IsTerminal(ImportStatus status) => Allowed[status].Count == 0;
+    /// <summary>Terminal statuses are never left automatically; only an explicit retry can reopen a failed import.</summary>
+    public static bool IsTerminal(ImportStatus status) => Terminal.Contains(status);
 
     public static IReadOnlyCollection<ImportStatus> AllowedSources(ImportStatus target) =>
         Allowed.Where(pair => pair.Value.Contains(target)).Select(pair => pair.Key).ToArray();

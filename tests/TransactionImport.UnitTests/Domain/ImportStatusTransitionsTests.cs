@@ -28,12 +28,19 @@ public sealed class ImportStatusTransitionsTests
 
     [Theory]
     [InlineData(ImportStatus.Completed)]
-    [InlineData(ImportStatus.Failed)]
     [InlineData(ImportStatus.Cancelled)]
-    public void Terminal_statuses_have_no_outgoing_transitions(ImportStatus terminal)
+    public void Completed_and_cancelled_have_no_outgoing_transitions(ImportStatus terminal)
     {
         Assert.True(ImportStatusTransitions.IsTerminal(terminal));
         Assert.All(Enum.GetValues<ImportStatus>(), target => Assert.False(ImportStatusTransitions.CanTransition(terminal, target)));
+    }
+
+    [Fact]
+    public void Failed_is_terminal_but_can_be_explicitly_retried()
+    {
+        Assert.True(ImportStatusTransitions.IsTerminal(ImportStatus.Failed));
+        Assert.True(ImportStatusTransitions.CanTransition(ImportStatus.Failed, ImportStatus.Pending));
+        Assert.False(ImportStatusTransitions.CanTransition(ImportStatus.Failed, ImportStatus.Processing));
     }
 
     [Fact]

@@ -4,8 +4,9 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsTestProject>true</IsTestProject>
-    <!-- Test method names use underscores for readability. -->
-    <NoWarn>$(NoWarn);CA1707;CA2007</NoWarn>
+    <!-- CA1707: test method names use underscores. CA2007: ConfigureAwait is noise in tests.
+         CA2022: partial ReadAsync results are intentional when asserting exceptions. -->
+    <NoWarn>$(NoWarn);CA1707;CA2007;CA2022</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

@@ -83,6 +83,18 @@ public sealed class Import
 
     public void ReleaseForRetry() => TransitionTo(ImportStatus.Pending);
 
+    public void Retry()
+    {
+        if (Status != ImportStatus.Failed)
+        {
+            throw new InvalidImportStatusTransitionException(Id, Status, ImportStatus.Pending);
+        }
+
+        TransitionTo(ImportStatus.Pending);
+        FailureReason = null;
+        CompletedAt = null;
+    }
+
     private void TransitionTo(ImportStatus target)
     {
         if (!ImportStatusTransitions.CanTransition(Status, target))
