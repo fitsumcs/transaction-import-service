@@ -28,7 +28,10 @@ RUN dotnet publish src/TransactionImport.Migrator/TransactionImport.Migrator.csp
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime-base
 WORKDIR /app
+# ICU provides Unicode normalization used by description normalization.
+RUN apk add --no-cache icu-libs
 ENV ASPNETCORE_HTTP_PORTS=8080 \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
     DOTNET_gcServer=1
 EXPOSE 8080
 USER $APP_UID

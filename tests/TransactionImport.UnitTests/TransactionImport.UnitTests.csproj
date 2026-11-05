@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="FsCheck.Xunit.v3" />
   </ItemGroup>
 
   <ItemGroup>

@@ -7,7 +7,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- ICU is required: description normalization relies on Unicode NFC (string.Normalize). -->
+    <InvariantGlobalization>false</InvariantGlobalization>
     <IsPackable>false</IsPackable>
     <!-- CA1515: public types in executables/tests are intentional for test visibility and DI wiring.
          CA1716: C#-only codebase; VB keyword clashes (e.g. the "Imports" namespace) are irrelevant. -->
