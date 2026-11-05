@@ -7,9 +7,9 @@ namespace TransactionImport.IntegrationTests.Api;
 public sealed class HealthEndpointTests(PostgresFixture postgres)
 {
     [Fact]
-    public async Task Ready_is_healthy_when_database_is_reachable()
+    public async Task Ready_is_healthy_when_dependencies_are_reachable()
     {
-        await using var factory = new ApiFactory(postgres.ConnectionString);
+        await using var factory = new ApiFactory(postgres);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(new Uri("/health/ready", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -18,12 +18,13 @@ public sealed class HealthEndpointTests(PostgresFixture postgres)
         var body = await response.Content.ReadFromJsonAsync<HealthBody>(TestContext.Current.CancellationToken);
         Assert.Equal("Healthy", body!.Status);
         Assert.Equal("Healthy", body.Checks["postgres"]);
+        Assert.Equal("Healthy", body.Checks["redis"]);
     }
 
     [Fact]
     public async Task Ready_is_unavailable_when_database_is_unreachable()
     {
-        await using var factory = new ApiFactory(ApiFactory.UnreachableConnectionString);
+        await using var factory = new ApiFactory(ApiFactory.UnreachableConnectionString, postgres.RedisConnectionString);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(new Uri("/health/ready", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -34,9 +35,9 @@ public sealed class HealthEndpointTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task Live_does_not_depend_on_the_database()
+    public async Task Live_does_not_depend_on_dependencies()
     {
-        await using var factory = new ApiFactory(ApiFactory.UnreachableConnectionString);
+        await using var factory = new ApiFactory(ApiFactory.UnreachableConnectionString, ApiFactory.UnreachableRedis);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync(new Uri("/health/live", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -47,7 +48,7 @@ public sealed class HealthEndpointTests(PostgresFixture postgres)
     [Fact]
     public async Task Every_response_carries_a_server_generated_request_id()
     {
-        await using var factory = new ApiFactory(ApiFactory.UnreachableConnectionString);
+        await using var factory = new ApiFactory(postgres);
         using var client = factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "/health/live");
         request.Headers.Add("X-Request-Id", "client-supplied");

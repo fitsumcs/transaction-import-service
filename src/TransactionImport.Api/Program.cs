@@ -5,7 +5,14 @@ using TransactionImport.Infrastructure.Hosting;
 // Composition root: the only place where concrete implementations are bound to abstractions.
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.WebHost.ConfigureKestrel(options =>
+{
+    // Request body size is enforced by UploadInspectionStream; keep Kestrel's limit aligned.
+    var maxBytes = builder.Configuration.GetValue("Imports:MaxFileBytes", 256L * 1024 * 1024);
+    options.Limits.MaxRequestBodySize = maxBytes + (1024 * 1024);
+});
+
+builder.Services.AddInfrastructure(builder.Configuration, includeWorkerServices: false);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
@@ -23,5 +30,9 @@ app.UseSwaggerUI(options =>
 });
 
 app.MapHealthEndpoints();
+app.MapPrometheusScrapingEndpoint("/metrics");
+app.MapImportEndpoints();
 
 await app.RunAsync();
+
+public partial class Program;

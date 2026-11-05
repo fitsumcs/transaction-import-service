@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Testcontainers.PostgreSql;
+using Testcontainers.Redis;
 using TransactionImport.Infrastructure.Persistence.Migrations;
 
 [assembly: AssemblyFixture(typeof(TransactionImport.IntegrationTests.Infrastructure.PostgresFixture))]
@@ -8,22 +9,25 @@ using TransactionImport.Infrastructure.Persistence.Migrations;
 namespace TransactionImport.IntegrationTests.Infrastructure;
 
 /// <summary>
-/// One disposable PostgreSQL container for the whole test assembly, migrated with the production
-/// migration runner. Tests isolate themselves with unique ids instead of truncating tables.
+/// Shared PostgreSQL + Redis containers for the test assembly, migrated with the production runner.
 /// </summary>
 public sealed class PostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:17-alpine")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine")
         .WithDatabase("transaction_import_tests")
         .Build();
 
-    public string ConnectionString => _container.GetConnectionString();
+    private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine").Build();
+
+    public string ConnectionString => _postgres.GetConnectionString();
+
+    public string RedisConnectionString => _redis.GetConnectionString();
 
     public NpgsqlDataSource DataSource { get; private set; } = null!;
 
     public async ValueTask InitializeAsync()
     {
-        await _container.StartAsync();
+        await Task.WhenAll(_postgres.StartAsync(), _redis.StartAsync());
         DataSource = NpgsqlDataSource.Create(ConnectionString);
         await new MigrationRunner(DataSource, NullLogger<MigrationRunner>.Instance).RunAsync(CancellationToken.None);
     }
@@ -31,6 +35,6 @@ public sealed class PostgresFixture : IAsyncLifetime
     public async ValueTask DisposeAsync()
     {
         await DataSource.DisposeAsync();
-        await _container.DisposeAsync();
+        await Task.WhenAll(_postgres.DisposeAsync().AsTask(), _redis.DisposeAsync().AsTask());
     }
 }

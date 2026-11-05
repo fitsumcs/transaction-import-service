@@ -50,7 +50,7 @@ public sealed class RiskModelTests
 
         Assert.Equal(first, second);
         var expected = RiskModel.AmountPoints(145.75m) + RiskModel.HourPoints(10) + RiskModel.DescriptionPoints("Subscription payment")
-            + RiskModel.MerchantPoints("merchant-18") + RiskModel.FingerprintPoints(fingerprint, "merchant-18");
+            + RiskModel.MerchantPoints("merchant-18") + RiskModel.FingerprintPoints(fingerprint, "merchant-18", RiskModel.DefaultWorkFactor);
         Assert.Equal(expected, first.Value);
     }
 

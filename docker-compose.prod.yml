@@ -1,0 +1,18 @@
+# Production overlay: pull pre-built images from GHCR instead of building locally.
+# Used by the CD workflow after SSH'ing to the server:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+name: transaction-import
+
+services:
+  migrator:
+    image: ${IMAGE_MIGRATOR:-ghcr.io/example/transaction-import-service/migrator:latest}
+    build: !reset null
+
+  api:
+    image: ${IMAGE_API:-ghcr.io/example/transaction-import-service/api:latest}
+    build: !reset null
+
+  worker:
+    image: ${IMAGE_WORKER:-ghcr.io/example/transaction-import-service/worker:latest}
+    build: !reset null

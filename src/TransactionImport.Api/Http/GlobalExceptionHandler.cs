@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics;
+using TransactionImport.Application.Errors;
 using TransactionImport.Domain;
 
 namespace TransactionImport.Api.Http;
@@ -12,19 +13,7 @@ internal sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHand
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
-        var (status, code, message) = exception switch
-        {
-            BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge } =>
-                (StatusCodes.Status413PayloadTooLarge, "REQUEST_BODY_TOO_LARGE", "The request body exceeds the allowed size."),
-            BadHttpRequestException bad =>
-                (bad.StatusCode, "BAD_REQUEST", "The request is malformed."),
-            DomainException domain =>
-                (StatusCodes.Status409Conflict, domain.Code, domain.Message),
-            OperationCanceledException when httpContext.RequestAborted.IsCancellationRequested =>
-                (499, "REQUEST_ABORTED", "The client closed the request."),
-            _ =>
-                (StatusCodes.Status500InternalServerError, "INTERNAL_ERROR", "An unexpected error occurred."),
-        };
+        var (status, code, message) = Map(exception, httpContext);
 
         if (status >= StatusCodes.Status500InternalServerError)
         {
@@ -46,6 +35,33 @@ internal sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHand
             cancellationToken);
         return true;
     }
+
+    private static (int Status, string Code, string Message) Map(Exception exception, HttpContext context) => exception switch
+    {
+        AppException app => (StatusFor(app.Kind), app.Code, app.Message),
+        BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge } =>
+            (StatusCodes.Status413PayloadTooLarge, "REQUEST_BODY_TOO_LARGE", "The request body exceeds the allowed size."),
+        BadHttpRequestException bad =>
+            (bad.StatusCode, "BAD_REQUEST", "The request is malformed."),
+        DomainException domain =>
+            (StatusCodes.Status409Conflict, domain.Code, domain.Message),
+        OperationCanceledException when context.RequestAborted.IsCancellationRequested =>
+            (499, "REQUEST_ABORTED", "The client closed the request."),
+        _ =>
+            (StatusCodes.Status500InternalServerError, "INTERNAL_ERROR", "An unexpected error occurred."),
+    };
+
+    private static int StatusFor(ErrorKind kind) => kind switch
+    {
+        ErrorKind.RequestValidation => StatusCodes.Status400BadRequest,
+        ErrorKind.NotFound => StatusCodes.Status404NotFound,
+        ErrorKind.Conflict => StatusCodes.Status409Conflict,
+        ErrorKind.PayloadTooLarge => StatusCodes.Status413PayloadTooLarge,
+        ErrorKind.UnsupportedMediaType => StatusCodes.Status415UnsupportedMediaType,
+        ErrorKind.RateLimited => StatusCodes.Status429TooManyRequests,
+        ErrorKind.Unavailable => StatusCodes.Status503ServiceUnavailable,
+        _ => StatusCodes.Status500InternalServerError,
+    };
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception mapped to {ErrorCode}")]
     private static partial void LogUnhandled(ILogger logger, Exception exception, string errorCode);

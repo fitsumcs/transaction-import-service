@@ -22,18 +22,21 @@ namespace TransactionImport.Domain.Transactions;
 public static class RiskModel
 {
     public const int Version = 1;
-    public const int WorkFactor = 1_000;
+
+    /// <summary>Default PBKDF2 iteration count. Override via configuration for demos/benchmarks.</summary>
+    public const int DefaultWorkFactor = 1_000;
 
     private static readonly string[] WatchListKeywords = ["gift card", "crypto", "wire transfer", "urgent", "casino"];
 
-    public static RiskScore Score(NormalizedTransaction transaction, ReadOnlySpan<byte> fingerprint)
+    public static RiskScore Score(NormalizedTransaction transaction, ReadOnlySpan<byte> fingerprint, int workFactor = DefaultWorkFactor)
     {
         ArgumentNullException.ThrowIfNull(transaction);
+        ArgumentOutOfRangeException.ThrowIfLessThan(workFactor, 1);
         var points = AmountPoints(transaction.Amount)
             + HourPoints(transaction.OccurredAtUtc.Hour)
             + DescriptionPoints(transaction.Description)
             + MerchantPoints(transaction.MerchantId)
-            + FingerprintPoints(fingerprint, transaction.MerchantId);
+            + FingerprintPoints(fingerprint, transaction.MerchantId, workFactor);
         return new RiskScore(Math.Clamp(points, RiskScore.Min, RiskScore.Max));
     }
 
@@ -86,11 +89,11 @@ public static class RiskModel
         return hash[0] % 16;
     }
 
-    public static int FingerprintPoints(ReadOnlySpan<byte> fingerprint, string merchantId)
+    public static int FingerprintPoints(ReadOnlySpan<byte> fingerprint, string merchantId, int workFactor = DefaultWorkFactor)
     {
         var salt = Encoding.UTF8.GetBytes("risk-model-v1:" + merchantId);
         Span<byte> derived = stackalloc byte[4];
-        Rfc2898DeriveBytes.Pbkdf2(fingerprint, salt, derived, WorkFactor, HashAlgorithmName.SHA256);
+        Rfc2898DeriveBytes.Pbkdf2(fingerprint, salt, derived, workFactor, HashAlgorithmName.SHA256);
         return (int)(BinaryPrimitives.ReadUInt32BigEndian(derived) % 21);
     }
 }
