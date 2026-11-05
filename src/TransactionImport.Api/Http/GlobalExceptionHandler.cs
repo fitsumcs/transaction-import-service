@@ -30,6 +30,8 @@ internal sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHand
         }
 
         httpContext.Response.StatusCode = status;
+        // ExceptionHandler replaces the response; re-apply the request id header set by RequestIdMiddleware.
+        httpContext.Response.Headers[RequestIdMiddleware.HeaderName] = httpContext.TraceIdentifier;
         await httpContext.Response.WriteAsJsonAsync(
             new ErrorResponse(new ErrorBody(code, message, httpContext.TraceIdentifier)),
             cancellationToken);

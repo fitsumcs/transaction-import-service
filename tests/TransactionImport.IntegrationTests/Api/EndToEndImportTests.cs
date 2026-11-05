@@ -9,10 +9,15 @@ using TransactionImport.IntegrationTests.Infrastructure;
 
 namespace TransactionImport.IntegrationTests.Api;
 
+[CollectionDefinition("EndToEnd", DisableParallelization = true)]
+public sealed class EndToEndCollection;
+
 /// <summary>
 /// Full API + Worker path against real Postgres and Redis: upload → outbox → stream → process → query.
-/// Each test uses an isolated Redis stream + shared storage root so parallel workers cannot steal jobs.
+/// Serialized: outbox relay publishes all unpublished rows, so parallel workers would cross-consume.
+/// Each test still uses an isolated Redis stream + shared storage root.
 /// </summary>
+[Collection("EndToEnd")]
 public sealed class EndToEndImportTests(PostgresFixture postgres)
 {
     [Fact]
