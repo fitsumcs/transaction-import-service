@@ -1,0 +1,69 @@
+name: transaction-import
+
+x-app-environment: &app-environment
+  ASPNETCORE_ENVIRONMENT: Production
+  Postgres__ConnectionString: >-
+    Host=postgres;Port=5432;Database=${POSTGRES_DB:-transaction_import};Username=${POSTGRES_USER:-app};Password=${POSTGRES_PASSWORD:-app};Maximum Pool Size=30;GSS Encryption Mode=Disable
+
+x-app-healthcheck: &app-healthcheck
+  test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health/ready"]
+  interval: 10s
+  timeout: 3s
+  retries: 5
+  start_period: 15s
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-transaction_import}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      target: api
+    environment:
+      <<: *app-environment
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *app-healthcheck
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      target: worker
+    environment:
+      <<: *app-environment
+    ports:
+      - "${WORKER_PORT:-8081}:8080"
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck: *app-healthcheck
+    stop_grace_period: 45s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  uploads:
