@@ -1,18 +1,123 @@
-# Production overlay: pull pre-built images from GHCR instead of building locally.
-# Used by the CD workflow after SSH'ing to the server:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Standalone production stack for the server (/usr/src/apps/transaction-import).
+# Same services as local docker-compose.yml; api / worker / migrator come from GHCR.
+#
+# Local testing still uses:  docker compose up --build
+# Server:
+#   cd /usr/src/apps/transaction-import
+#   docker login ghcr.io   # if packages are private
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
 name: transaction-import
 
+x-app-environment: &app-environment
+  ASPNETCORE_ENVIRONMENT: Production
+  Postgres__ConnectionString: >-
+    Host=postgres;Port=5432;Database=${POSTGRES_DB:-transaction_import};Username=${POSTGRES_USER:-app};Password=${POSTGRES_PASSWORD:-app};Maximum Pool Size=30;GSS Encryption Mode=Disable
+  Redis__ConnectionString: redis:6379
+  FileStorage__Provider: ${FileStorage__Provider:-local}
+  FileStorage__LocalRoot: ${FileStorage__LocalRoot:-/data/uploads}
+  FileStorage__CloudName: ${FileStorage__CloudName:-}
+  FileStorage__ApiKey: ${FileStorage__ApiKey:-}
+  FileStorage__ApiSecret: ${FileStorage__ApiSecret:-}
+  FileStorage__CloudinaryFolder: ${FileStorage__CloudinaryFolder:-transaction-import}
+  RiskScoring__WorkFactor: ${RISK_WORK_FACTOR:-50}
+
+x-app-healthcheck: &app-healthcheck
+  test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health/ready"]
+  interval: 10s
+  timeout: 3s
+  retries: 5
+  start_period: 20s
+
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-transaction_import}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   migrator:
-    image: ${IMAGE_MIGRATOR:-ghcr.io/example/transaction-import-service/migrator:latest}
-    build: !reset null
+    image: ${IMAGE_MIGRATOR:-ghcr.io/fitsumcs/transaction-import-service/migrator:latest}
+    pull_policy: always
+    environment:
+      <<: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # Named volumes are root-owned; the app runs as UID 1654 ($APP_UID).
+  storage-init:
+    image: busybox:1.37
+    user: root
+    volumes:
+      - uploads:/data/uploads
+    command: ["sh", "-c", "mkdir -p /data/uploads && chown -R 1654:1654 /data/uploads"]
+    restart: "no"
 
   api:
-    image: ${IMAGE_API:-ghcr.io/example/transaction-import-service/api:latest}
-    build: !reset null
+    image: ${IMAGE_API:-ghcr.io/fitsumcs/transaction-import-service/api:latest}
+    pull_policy: always
+    environment:
+      <<: *app-environment
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      storage-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck: *app-healthcheck
+    stop_grace_period: 30s
+    restart: unless-stopped
 
   worker:
-    image: ${IMAGE_WORKER:-ghcr.io/example/transaction-import-service/worker:latest}
-    build: !reset null
+    image: ${IMAGE_WORKER:-ghcr.io/fitsumcs/transaction-import-service/worker:latest}
+    pull_policy: always
+    environment:
+      <<: *app-environment
+    ports:
+      - "${WORKER_PORT:-8081}:8080"
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      storage-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck: *app-healthcheck
+    stop_grace_period: 45s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  uploads:

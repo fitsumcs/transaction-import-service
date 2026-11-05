@@ -131,8 +131,8 @@ jobs:
             cd "$COMPOSE_DIR"
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             export IMAGE_API IMAGE_WORKER IMAGE_MIGRATOR
-            docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f
-            docker compose ps
+            docker compose -f docker-compose.prod.yml ps
             curl -fsS "http://127.0.0.1:${API_PORT:-8080}/health/ready"

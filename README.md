@@ -450,9 +450,19 @@ CD secrets (GitHub Environment **`production`**):
 | `DEPLOY_USER` | SSH user |
 | `DEPLOY_SSH_KEY` | Private key |
 | `DEPLOY_PORT` | SSH port |
-| `DEPLOY_COMPOSE_DIR` | Absolute path to the compose directory on the server |
+| `DEPLOY_COMPOSE_DIR` | Absolute path to the compose directory on the server (`/usr/src/apps/transaction-import`) |
 
-On the server: `docker-compose.yml` + `docker-compose.prod.yml` and a `.env` with image names / DB password. CD exports `IMAGE_API`, `IMAGE_WORKER`, `IMAGE_MIGRATOR`.
+Local uses `docker-compose.yml` (`--build`). On the server, put **`docker-compose.prod.yml`** + `.env` under **`/usr/src/apps/transaction-import`** (set `DEPLOY_COMPOSE_DIR` to that path). That file is a full stack: postgres, redis, storage-init, migrator, api, worker — apps from GHCR.
+
+```bash
+cd /usr/src/apps/transaction-import
+# one-time: docker login ghcr.io   # if packages are private
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+# Swagger: http://YOUR_HOST:8080/swagger
+```
+
+CD exports `IMAGE_API` / `IMAGE_WORKER` / `IMAGE_MIGRATOR` and runs `docker compose -f docker-compose.prod.yml …` in `DEPLOY_COMPOSE_DIR`.
 
 ---
 
