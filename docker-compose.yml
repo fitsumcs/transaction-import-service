@@ -58,6 +58,15 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # Named volumes are root-owned; the app runs as UID 1654 ($APP_UID).
+  storage-init:
+    image: busybox:1.37
+    user: root
+    volumes:
+      - uploads:/data/uploads
+    command: ["sh", "-c", "mkdir -p /data/uploads && chown -R 1654:1654 /data/uploads"]
+    restart: "no"
+
   api:
     build:
       context: .
@@ -70,6 +79,8 @@ services:
       - uploads:/data/uploads
     depends_on:
       migrator:
+        condition: service_completed_successfully
+      storage-init:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
@@ -89,6 +100,8 @@ services:
       - uploads:/data/uploads
     depends_on:
       migrator:
+        condition: service_completed_successfully
+      storage-init:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
