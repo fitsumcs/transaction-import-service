@@ -10,8 +10,10 @@ COPY src/TransactionImport.Application/TransactionImport.Application.csproj src/
 COPY src/TransactionImport.Infrastructure/TransactionImport.Infrastructure.csproj src/TransactionImport.Infrastructure/
 COPY src/TransactionImport.Api/TransactionImport.Api.csproj src/TransactionImport.Api/
 COPY src/TransactionImport.Worker/TransactionImport.Worker.csproj src/TransactionImport.Worker/
+COPY src/TransactionImport.Migrator/TransactionImport.Migrator.csproj src/TransactionImport.Migrator/
 RUN dotnet restore src/TransactionImport.Api/TransactionImport.Api.csproj \
- && dotnet restore src/TransactionImport.Worker/TransactionImport.Worker.csproj
+ && dotnet restore src/TransactionImport.Worker/TransactionImport.Worker.csproj \
+ && dotnet restore src/TransactionImport.Migrator/TransactionImport.Migrator.csproj
 
 COPY src/ src/
 
@@ -20,6 +22,9 @@ RUN dotnet publish src/TransactionImport.Api/TransactionImport.Api.csproj -c Rel
 
 FROM build AS publish-worker
 RUN dotnet publish src/TransactionImport.Worker/TransactionImport.Worker.csproj -c Release -o /app --no-restore
+
+FROM build AS publish-migrator
+RUN dotnet publish src/TransactionImport.Migrator/TransactionImport.Migrator.csproj -c Release -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime-base
 WORKDIR /app
@@ -35,3 +40,7 @@ ENTRYPOINT ["dotnet", "TransactionImport.Api.dll"]
 FROM runtime-base AS worker
 COPY --from=publish-worker /app .
 ENTRYPOINT ["dotnet", "TransactionImport.Worker.dll"]
+
+FROM runtime-base AS migrator
+COPY --from=publish-migrator /app .
+ENTRYPOINT ["dotnet", "TransactionImport.Migrator.dll"]

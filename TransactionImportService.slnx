@@ -4,6 +4,7 @@
     <Project Path="src/TransactionImport.Application/TransactionImport.Application.csproj" />
     <Project Path="src/TransactionImport.Domain/TransactionImport.Domain.csproj" />
     <Project Path="src/TransactionImport.Infrastructure/TransactionImport.Infrastructure.csproj" />
+    <Project Path="src/TransactionImport.Migrator/TransactionImport.Migrator.csproj" />
     <Project Path="src/TransactionImport.Worker/TransactionImport.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">

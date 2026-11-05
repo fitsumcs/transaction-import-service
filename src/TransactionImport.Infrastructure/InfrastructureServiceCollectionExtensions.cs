@@ -13,23 +13,30 @@ public static class InfrastructureServiceCollectionExtensions
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddPostgres(configuration);
+
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IIdGenerator, GuidV7IdGenerator>();
+
+        services.AddHealthChecks()
+            .AddCheck<ShutdownReadinessCheck>("shutdown", tags: [HealthEndpoints.ReadyTag])
+            .AddCheck<PostgresHealthCheck>("postgres", tags: [HealthEndpoints.ReadyTag], timeout: TimeSpan.FromSeconds(3));
+
+        return services;
+    }
+
+    public static IServiceCollection AddPostgres(this IServiceCollection services, IConfiguration configuration)
+    {
         services.AddOptions<PostgresOptions>()
             .Bind(configuration.GetSection(PostgresOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
-
-        services.AddSingleton(TimeProvider.System);
-        services.AddSingleton<IIdGenerator, GuidV7IdGenerator>();
 
         services.AddSingleton(provider =>
         {
             var options = provider.GetRequiredService<IOptions<PostgresOptions>>().Value;
             return new NpgsqlDataSourceBuilder(options.ConnectionString).Build();
         });
-
-        services.AddHealthChecks()
-            .AddCheck<ShutdownReadinessCheck>("shutdown", tags: [HealthEndpoints.ReadyTag])
-            .AddCheck<PostgresHealthCheck>("postgres", tags: [HealthEndpoints.ReadyTag], timeout: TimeSpan.FromSeconds(3));
 
         return services;
     }

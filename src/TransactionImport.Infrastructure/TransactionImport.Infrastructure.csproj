@@ -13,7 +13,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Persistence\Migrations\*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="TransactionImport.IntegrationTests" />
+    <InternalsVisibleTo Include="TransactionImport.UnitTests" />
   </ItemGroup>
 
 </Project>

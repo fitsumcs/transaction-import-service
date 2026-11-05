@@ -30,6 +30,17 @@ services:
       retries: 10
     restart: unless-stopped
 
+  migrator:
+    build:
+      context: .
+      target: migrator
+    environment:
+      <<: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: .
@@ -41,8 +52,8 @@ services:
     volumes:
       - uploads:/data/uploads
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
     healthcheck: *app-healthcheck
     stop_grace_period: 30s
     restart: unless-stopped
@@ -58,8 +69,8 @@ services:
     volumes:
       - uploads:/data/uploads
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
     healthcheck: *app-healthcheck
     stop_grace_period: 45s
     restart: unless-stopped
