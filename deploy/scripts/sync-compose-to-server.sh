@@ -3,12 +3,12 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-HOST="${1:?usage: $0 <ec2-user@host> [ssh-key]}"
+HOST="${1:?usage: $0 <user@host> [ssh-key]}"
 KEY="${2:-}"
 REMOTE_DIR="${DEPLOY_COMPOSE_DIR:-/usr/src/apps/transaction-import}"
 
-SSH=(ssh)
-SCP=(scp)
+SSH=(ssh -o StrictHostKeyChecking=accept-new)
+SCP=(scp -o StrictHostKeyChecking=accept-new)
 if [[ -n "$KEY" ]]; then
   SSH+=( -i "$KEY" )
   SCP+=( -i "$KEY" )

@@ -4,6 +4,10 @@ This guide stands up a public demo so reviewers can open Swagger. Infra lives in
 [`deploy/terraform`](../deploy/terraform). Local testing still uses `docker-compose.yml`;
 the server uses **`docker-compose.prod.yml`** only.
 
+**Bought a VPS instead (e.g. Yegara, password SSH)?** Skip Terraform — use
+[`deploy/scripts/bootstrap-vps.sh`](../deploy/scripts/bootstrap-vps.sh) (see
+[Any Linux VPS](#any-linux-vps-yegara--password-ssh) below).
+
 **Target layout on the VM:** `/usr/src/apps/transaction-import`
 
 ---
@@ -138,6 +142,35 @@ Smoke:
 - `https://YOUR_HOST/swagger`
 - `https://YOUR_HOST/health/ready`
 - follow [`REVIEWER_TEST_GUIDE.md`](REVIEWER_TEST_GUIDE.md)
+
+---
+
+## Any Linux VPS (Yegara / password SSH)
+
+1. Point DuckDNS at the VM public IP.
+2. From your Mac (prompts for password):
+
+```bash
+chmod +x deploy/scripts/*.sh
+./deploy/scripts/remote-bootstrap.sh root@YOUR_VM_IP abzlab-import.duckdns.org you@example.com
+# or SSH in and: sudo bash bootstrap-vps.sh --domain ... --email ...
+```
+
+3. Copy compose + env, then start:
+
+```bash
+./deploy/scripts/sync-compose-to-server.sh root@YOUR_VM_IP
+ssh root@YOUR_VM_IP
+cd /usr/src/apps/transaction-import
+cp -n .env.example .env   # edit POSTGRES_PASSWORD
+docker login ghcr.io      # if private
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+```
+
+4. `./deploy/scripts/update-readme-url.sh https://abzlab-import.duckdns.org`
+
+For GitHub CD, put an SSH **public** key in the VM `authorized_keys` (CD expects a key, not a password).
 
 ---
 
