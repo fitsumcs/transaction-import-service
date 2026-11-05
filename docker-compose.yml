@@ -5,8 +5,12 @@ x-app-environment: &app-environment
   Postgres__ConnectionString: >-
     Host=postgres;Port=5432;Database=${POSTGRES_DB:-transaction_import};Username=${POSTGRES_USER:-app};Password=${POSTGRES_PASSWORD:-app};Maximum Pool Size=30;GSS Encryption Mode=Disable
   Redis__ConnectionString: redis:6379
-  FileStorage__Provider: local
-  FileStorage__LocalRoot: /data/uploads
+  FileStorage__Provider: ${FileStorage__Provider:-local}
+  FileStorage__LocalRoot: ${FileStorage__LocalRoot:-/data/uploads}
+  FileStorage__CloudName: ${FileStorage__CloudName:-}
+  FileStorage__ApiKey: ${FileStorage__ApiKey:-}
+  FileStorage__ApiSecret: ${FileStorage__ApiSecret:-}
+  FileStorage__CloudinaryFolder: ${FileStorage__CloudinaryFolder:-transaction-import}
   # Demo default: keep scoring snappy. Raise to 1000+ for production-like CPU load.
   RiskScoring__WorkFactor: ${RISK_WORK_FACTOR:-50}
 

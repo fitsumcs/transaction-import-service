@@ -482,18 +482,10 @@ $RECYCLE.BIN/
 *.swp
 
 # Local data / generated artifacts
+# Local data / generated artifacts (root only — do not ignore src/**/Storage/)
 .env
-data/
-storage/
-*.ndjson
-!tests/**/fixtures/*.ndjson
-benchmarks/results/
-.DS_Store
-
-# Local data / generated artifacts
-.env
-data/
-storage/
+/data/
+/storage/
 *.ndjson
 !tests/**/fixtures/*.ndjson
 benchmarks/results/

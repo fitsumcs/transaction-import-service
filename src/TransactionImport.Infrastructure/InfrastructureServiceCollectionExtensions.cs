@@ -2,6 +2,7 @@ using Amazon.Runtime;
 using Amazon.S3;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using OpenTelemetry.Metrics;
@@ -105,6 +106,8 @@ public static class InfrastructureServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddHttpClient(CloudinaryFileStorage.HttpClientName);
+
         services.AddSingleton<IFileStorage>(provider =>
         {
             var options = provider.GetRequiredService<IOptions<FileStorageOptions>>().Value;
@@ -112,6 +115,10 @@ public static class InfrastructureServiceCollectionExtensions
             {
                 "local" => new LocalFileStorage(options),
                 "s3" => new S3FileStorage(CreateS3Client(options), options),
+                "cloudinary" => new CloudinaryFileStorage(
+                    options,
+                    provider.GetRequiredService<IHttpClientFactory>(),
+                    provider.GetRequiredService<ILogger<CloudinaryFileStorage>>()),
                 _ => throw new InvalidOperationException($"Unknown FileStorage:Provider '{options.Provider}'."),
             };
         });

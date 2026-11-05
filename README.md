@@ -58,7 +58,7 @@ reconciliation results over HTTP.
 - Transactional outbox (no dual-write)
 - OpenTelemetry metrics + optional OTLP tracing
 - OpenAPI + Swagger UI
-- S3-compatible storage adapter (switch via config)
+- S3-compatible and Cloudinary storage adapters (switch via config)
 - Property-based tests (FsCheck) on the parser
 - Testcontainers integration tests
 - Data generator tool
@@ -361,9 +361,11 @@ dotnet run --project src/TransactionImport.Worker    # http://localhost:5282
 | --- | --- | --- |
 | `Postgres:ConnectionString` | `Postgres__ConnectionString` | Required |
 | `Redis:ConnectionString` | `Redis__ConnectionString` | Required |
-| `FileStorage:Provider` | `FileStorage__Provider` | `local` (default) or `s3` |
+| `FileStorage:Provider` | `FileStorage__Provider` | `local` (default), `s3`, or `cloudinary` |
 | `FileStorage:LocalRoot` | `FileStorage__LocalRoot` | Default `/data/uploads` |
 | `FileStorage:Bucket` / `ServiceUrl` / keys | `FileStorage__*` | For S3 / MinIO |
+| `FileStorage:CloudName` / `ApiKey` / `ApiSecret` | `FileStorage__*` | Cloudinary dashboard → API Keys (free tier OK) |
+| `FileStorage:CloudinaryFolder` | `FileStorage__CloudinaryFolder` | Optional folder prefix (default `transaction-import`) |
 | `Imports:MaxFileBytes` | `Imports__MaxFileBytes` | Default 256 MiB |
 | `Processing:BatchSize` | `Processing__BatchSize` | Default 1000 |
 | `Processing:MaxConcurrentImports` | `Processing__MaxConcurrentImports` | Per worker process |
@@ -371,6 +373,12 @@ dotnet run --project src/TransactionImport.Worker    # http://localhost:5282
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | same | Enables OTLP trace export when set |
 
 Compose also honors `API_PORT`, `WORKER_PORT`, `POSTGRES_*` from `.env`.
+
+### Cloudinary (free tier)
+
+1. Create a free account at [cloudinary.com](https://cloudinary.com/) and copy **Cloud name**, **API Key**, and **API Secret** from the dashboard.
+2. Set `FileStorage__Provider=cloudinary` plus the three credentials (see `.env.example`). API and Worker must share the same settings.
+3. Uploads are stored as Cloudinary **raw** assets under `CloudinaryFolder` (default `transaction-import`). Prefer S3 for very large production imports; free-tier quotas apply.
 
 ---
 
