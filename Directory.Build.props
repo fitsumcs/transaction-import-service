@@ -9,7 +9,8 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <InvariantGlobalization>true</InvariantGlobalization>
     <IsPackable>false</IsPackable>
-    <!-- CA1515: public types in executables/tests are intentional for test visibility and DI wiring. -->
-    <NoWarn>$(NoWarn);CA1515</NoWarn>
+    <!-- CA1515: public types in executables/tests are intentional for test visibility and DI wiring.
+         CA1716: C#-only codebase; VB keyword clashes (e.g. the "Imports" namespace) are irrelevant. -->
+    <NoWarn>$(NoWarn);CA1515;CA1716</NoWarn>
   </PropertyGroup>
 </Project>
