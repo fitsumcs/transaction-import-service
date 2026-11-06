@@ -135,4 +135,13 @@ jobs:
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f
             docker compose -f docker-compose.prod.yml ps
-            curl -fsS "http://127.0.0.1:${API_PORT:-8080}/health/ready"
+            for i in $(seq 1 30); do
+              if curl -fsS "http://127.0.0.1:${API_PORT:-8080}/health/ready"; then
+                echo
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "API did not become ready in time" >&2
+            docker compose -f docker-compose.prod.yml logs api --tail 80 >&2
+            exit 1

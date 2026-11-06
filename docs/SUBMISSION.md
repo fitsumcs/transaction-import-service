@@ -9,7 +9,7 @@ and cursor-paginated rejections are exposed over HTTP.
 
 Repository: use the Git remote URL for this project.
 
-**Live demo:** `https://YOUR_PUBLIC_HOST` · Swagger: `https://YOUR_PUBLIC_HOST/swagger`  
+**Live demo:** `https://abzlab-import.duckdns.org` · Swagger: `https://abzlab-import.duckdns.org/swagger`  
 (How to provision: [`DEPLOY.md`](DEPLOY.md).)
 
 **For evaluators:** follow [`REVIEWER_TEST_GUIDE.md`](REVIEWER_TEST_GUIDE.md) (Swagger steps, sample NDJSON,
@@ -54,7 +54,7 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`adr/`](adr/).
 - No authentication (assignment optional; auth-ready header seam).
 - Resumable **upload** HTTP not exposed.
 - Data-retention policy not implemented.
-- Public URL is set after deploy (`https://YOUR_PUBLIC_HOST` until `./deploy/scripts/update-readme-url.sh` is run).
+- Public URL is set after deploy (`https://abzlab-import.duckdns.org` until `./deploy/scripts/update-readme-url.sh` is run).
 
 ## Benchmark summary
 

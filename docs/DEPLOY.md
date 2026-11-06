@@ -38,7 +38,43 @@ leaving the EIP unused, and converting off the Free plan.
 
 ---
 
-## 2. Terraform (EC2 + Docker + Nginx)
+## 2. One-shot deploy script
+
+Use [`deploy/scripts/deploy-ec2.sh`](../deploy/scripts/deploy-ec2.sh).
+
+### 2a. EC2 you created in the AWS console (works even when Terraform is SCP-blocked)
+
+1. Launch Ubuntu 24.04, open **22 / 80 / 443**, attach your SSH key, note the **public IP**.
+2. Point DuckDNS at that IP.
+3. From the repo:
+
+```bash
+chmod +x deploy/scripts/*.sh
+# optional: export GHCR_USER=... GHCR_TOKEN=...   # if GHCR packages are private
+./deploy/scripts/deploy-ec2.sh \
+  --host ubuntu@YOUR_EC2_IP \
+  --key ~/.ssh/id_ed25519 \
+  --domain abzlab-import.duckdns.org \
+  --email you@example.com \
+  --update-readme
+```
+
+That installs Docker + Nginx + TLS, copies `docker-compose.prod.yml`, pulls GHCR images, and `up -d`.
+
+### 2b. Terraform creates the EC2 (needs EC2 API allowed)
+
+If `terraform plan` still fails with SCP `ec2:DescribeImages` deny, stay on **2a**. Otherwise:
+
+```bash
+cp deploy/terraform/terraform.tfvars.example deploy/terraform/terraform.tfvars
+# edit: SSH keys, DuckDNS, domain_name, certbot_email
+export AWS_PROFILE=abzlab
+./deploy/scripts/deploy-ec2.sh --update-readme
+```
+
+Terraform path: **apply** (EC2 + EIP + cloud-init) → sync compose → pull/up.
+
+Manual / step-by-step (same result):
 
 ```bash
 cd deploy/terraform

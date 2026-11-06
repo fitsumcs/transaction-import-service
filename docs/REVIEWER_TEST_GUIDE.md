@@ -2,16 +2,16 @@
 
 Use this checklist against the **deployed** API.
 
-**Public base URL:** `https://YOUR_PUBLIC_HOST` (no trailing slash).  
+**Public base URL:** `https://abzlab-import.duckdns.org` (no trailing slash).  
 If you still see the placeholder, ask the candidate for the live host from their README.
 
 | Entry point | URL |
 | --- | --- |
-| Swagger UI | `https://YOUR_PUBLIC_HOST/swagger` |
-| OpenAPI JSON | `https://YOUR_PUBLIC_HOST/openapi/v1.json` |
-| Liveness | `https://YOUR_PUBLIC_HOST/health/live` |
-| Readiness | `https://YOUR_PUBLIC_HOST/health/ready` |
-| Prometheus metrics | `https://YOUR_PUBLIC_HOST/metrics` |
+| Swagger UI | `https://abzlab-import.duckdns.org/swagger` |
+| OpenAPI JSON | `https://abzlab-import.duckdns.org/openapi/v1.json` |
+| Liveness | `https://abzlab-import.duckdns.org/health/live` |
+| Readiness | `https://abzlab-import.duckdns.org/health/ready` |
+| Prometheus metrics | `https://abzlab-import.duckdns.org/metrics` |
 
 **Required headers for imports**
 
@@ -36,9 +36,9 @@ Save as `reviewer-sample.ndjson` (5 lines: 2 valid unique, 1 duplicate of the fi
 
 ## 0. Smoke checks (1 minute)
 
-1. Open `https://YOUR_PUBLIC_HOST/swagger` — UI loads.
-2. Open `https://YOUR_PUBLIC_HOST/health/ready` — `"status":"Healthy"` (postgres + redis).
-3. Open `https://YOUR_PUBLIC_HOST/metrics` — Prometheus text (not HTML error).
+1. Open `https://abzlab-import.duckdns.org/swagger` — UI loads.
+2. Open `https://abzlab-import.duckdns.org/health/ready` — `"status":"Healthy"` (postgres + redis).
+3. Open `https://abzlab-import.duckdns.org/metrics` — Prometheus text (not HTML error).
 
 ---
 
@@ -133,7 +133,7 @@ If you have a failed id (or the candidate seeds one):
 ## 5. Curl equivalents (optional)
 
 ```bash
-BASE=https://YOUR_PUBLIC_HOST
+BASE=https://abzlab-import.duckdns.org
 KEY=review-curl-001
 PROVIDER=reviewer
 

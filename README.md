@@ -16,9 +16,9 @@ reconciliation results over HTTP.
 
 | | |
 | --- | --- |
-| **Base URL** | `https://YOUR_PUBLIC_HOST` |
-| **Swagger** | `https://YOUR_PUBLIC_HOST/swagger` |
-| **Ready** | `https://YOUR_PUBLIC_HOST/health/ready` |
+| **Base URL** | `https://abzlab-import.duckdns.org` |
+| **Swagger** | `https://abzlab-import.duckdns.org/swagger` |
+| **Ready** | `https://abzlab-import.duckdns.org/health/ready` |
 
 After deploy, replace the placeholder: `./deploy/scripts/update-readme-url.sh https://your-subdomain.duckdns.org`
 
@@ -492,7 +492,7 @@ terraform init && terraform apply
 ./deploy/scripts/update-readme-url.sh "$(terraform -chdir=deploy/terraform output -raw public_base_url)"
 ```
 
-Public URL for reviewers: `https://YOUR_PUBLIC_HOST` (update after apply).
+Public URL for reviewers: `https://abzlab-import.duckdns.org` (update after apply).
 
 ---
 
